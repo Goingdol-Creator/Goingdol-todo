@@ -10,6 +10,7 @@ create table if not exists public.todo_tasks (
   color       text,                      -- 'yellow' (형광펜) 또는 null
   note        text,
   kind        text,                      -- today | meeting | release | deadline
+  indent      smallint not null default 0, -- 1 이면 바로 위 할 일의 자식(들여쓰기)
   position    integer not null default 0,
   updated_at  timestamptz not null default now()
 );
@@ -53,3 +54,6 @@ end $$;
 drop trigger if exists todo_tasks_touch on public.todo_tasks;
 create trigger todo_tasks_touch before update on public.todo_tasks
   for each row execute function public.todo_touch_updated_at();
+
+-- 이미 테이블이 만들어져 있다면 아래 한 줄만 실행하세요 (들여쓰기 기능)
+alter table public.todo_tasks add column if not exists indent smallint not null default 0;

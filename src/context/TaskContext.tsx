@@ -16,19 +16,19 @@ export interface Task {
     color?: string;
     note?: string;
     kind?: TaskKind;
+    /** 1 이면 바로 위 할 일의 자식 (들여쓰기). 없거나 0 이면 최상위 */
+    indent?: 0 | 1;
 }
 
-export type Theme = 'light' | 'blue' | 'dark';
 export type ViewMode = 'week' | 'month';
 
 export interface Settings {
-    theme: Theme;
     showBacklog: boolean;
     showWeekend: boolean;
     view: ViewMode;
 }
 
-const DEFAULT_SETTINGS: Settings = { theme: 'light', showBacklog: true, showWeekend: true, view: 'week' };
+const DEFAULT_SETTINGS: Settings = { showBacklog: true, showWeekend: true, view: 'week' };
 
 export type SyncStatus = 'loading' | 'idle' | 'saving' | 'error';
 
@@ -64,6 +64,7 @@ interface TaskRow {
     color: string | null;
     note: string | null;
     kind: string | null;
+    indent: number | null;
     position: number;
 }
 
@@ -75,6 +76,7 @@ const fromRow = (r: TaskRow): Task => ({
     color: r.color ?? undefined,
     note: r.note ?? undefined,
     kind: (r.kind ?? undefined) as TaskKind | undefined,
+    indent: r.indent === 1 ? 1 : undefined,
 });
 
 const toRow = (t: Task, position: number) => ({
@@ -85,12 +87,13 @@ const toRow = (t: Task, position: number) => ({
     color: t.color ?? null,
     note: t.note ?? null,
     kind: t.kind ?? null,
+    indent: t.indent === 1 ? 1 : 0,
     position,
 });
 
 /** 서버에 마지막으로 반영된 상태와 비교하기 위한 서명 */
 const signature = (t: Task, position: number) =>
-    JSON.stringify([t.text, t.date, t.completed, t.color ?? null, t.note ?? null, t.kind ?? null, position]);
+    JSON.stringify([t.text, t.date, t.completed, t.color ?? null, t.note ?? null, t.kind ?? null, t.indent === 1 ? 1 : 0, position]);
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
 
@@ -171,11 +174,6 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
         [setSettings]
     );
 
-    // 테마 적용
-    useEffect(() => {
-        document.documentElement.dataset.theme = merged.theme;
-    }, [merged.theme]);
-
     // 내용이 빈 할 일은 편집 중일 때만 존재 — 편집이 끝났거나 저장돼 있던 빈 항목은 제거
     useEffect(() => {
         setTasks((prev) =>
@@ -203,10 +201,11 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
     const addTask = useCallback(
         (date: string | null, afterId?: string) => {
             const id = uuidv4();
-            const task: Task = { id, text: '', date, completed: false };
             setTasks((prev) => {
                 const idx = afterId ? prev.findIndex((t) => t.id === afterId) : -1;
-                if (idx === -1) return [...prev, task];
+                if (idx === -1) return [...prev, { id, text: '', date, completed: false }];
+                // 들여쓴 줄에서 Enter 하면 새 줄도 같은 들여쓰기
+                const task: Task = { id, text: '', date, completed: false, indent: prev[idx].indent === 1 ? 1 : undefined };
                 const next = [...prev];
                 next.splice(idx + 1, 0, task);
                 return next;
@@ -231,7 +230,8 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
                 const task = prev.find((t) => t.id === id);
                 if (!task) return prev;
                 const rest = prev.filter((t) => t.id !== id);
-                const moved = { ...task, date };
+                // 다른 날짜로 옮기거나 맨 위로 가면 들여쓰기 해제
+                const moved = { ...task, date, indent: task.date !== date || index === 0 ? undefined : task.indent };
                 const list = rest.filter((t) => t.date === date);
                 if (index >= list.length) {
                     const last = list[list.length - 1];

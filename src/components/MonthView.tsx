@@ -12,7 +12,7 @@ interface Props {
 const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일'];
 
 /** 주간 뷰와 동일: 구분 아이콘 + 글자(자동 강조·형광펜), 배경 칩 없음 */
-const MonthTask = ({ task }: { task: Task }) => {
+const MonthTask = ({ task, child }: { task: Task; child: boolean }) => {
     const kind = kindOf(task.kind);
     const text = kind?.pattern
         ? splitByPattern(task.text, kind.pattern).map((p, i) =>
@@ -25,7 +25,7 @@ const MonthTask = ({ task }: { task: Task }) => {
         : task.text;
 
     return (
-        <span className={`month-task${task.completed ? ' done' : ''}`}>
+        <span className={`month-task${task.completed ? ' done' : ''}${child ? ' child' : ''}`}>
             {kind && (
                 <span className="month-kind" style={{ color: kind.color }}>
                     <kind.icon size={12} strokeWidth={2.2} />
@@ -69,8 +69,8 @@ const MonthView = ({ currentDate, onPickDay }: Props) => {
                             <span className="month-num">{format(d, 'd')}</span>
                             {holiday && <span className="holiday-tag">휴일</span>}
                         </span>
-                        {list.slice(0, 4).map((t) => (
-                            <MonthTask key={t.id} task={t} />
+                        {list.slice(0, 4).map((t, i) => (
+                            <MonthTask key={t.id} task={t} child={t.indent === 1 && i > 0} />
                         ))}
                         {list.length > 4 && <span className="month-more">+{list.length - 4}</span>}
                     </button>

@@ -34,23 +34,6 @@
   --shadow-menu: 0 8px 16px rgba(0, 0, 0, 0.1);
 }
 
-:root[data-theme='blue'] {
-  --bg: #e9edfd;
-  --text: #141a3d;
-  --accent: #5167f4;
-  --popover: rgba(251, 252, 255, 0.98);
-}
-
-:root[data-theme='dark'] {
-  --holiday-text: #ff8b96;
-  --holiday-tint: color-mix(in srgb, var(--text) 9%, transparent);
-  --bg: #000000;
-  --text: #ffffff;
-  --accent: #8b9bff;
-  --popover: rgba(38, 38, 42, 0.96);
-  --shadow-menu: 0 8px 16px rgba(0, 0, 0, 0.5);
-}
-
 /* ============================================================
    Base
    ============================================================ */
@@ -157,6 +140,7 @@ textarea { font-family: inherit; color: inherit; }
   min-height: var(--row-h); padding: 11px 0 10px;
   outline: none;
 }
+.task.child { padding-left: 26px; }
 .task.dragging { background: var(--bg); box-shadow: var(--shadow-menu); border-radius: var(--radius-s); padding-inline: 8px; }
 
 .check {
@@ -180,9 +164,62 @@ textarea { font-family: inherit; color: inherit; }
   padding: 1px 2px; margin: 0 -2px; border-radius: 2px;
   box-decoration-break: clone; -webkit-box-decoration-break: clone;
 }
-:root[data-theme='dark'] .label { --hl-alpha: 32%; }
-.task.done .task-text { color: var(--muted); text-decoration: line-through; }
+/* 취소선: text-decoration 대신 배경 그라데이션 선 (왼쪽에서 오른쪽으로 그을 수 있게) */
+.task.done .task-text { color: var(--muted); }
+.task.done .txt {
+  background: linear-gradient(currentColor, currentColor) no-repeat 0 58% / 100% 1.5px;
+}
 .task.done .label { opacity: 0.55; }
+
+/* 완료 모션: 취소선이 천천히 그어지다가 마지막 1/3에서 핑! → 글자가 회색으로 띵 + 살짝 흔들림 + 가루가 팡 */
+.task.completing .task-text {
+  animation:
+    strike-color 0.01s linear 0.42s backwards,
+    task-wiggle 0.4s ease-out 0.42s;
+}
+.task.completing .txt {
+  animation: strike-draw 0.42s linear;
+}
+.task.completing .check { animation: check-pop 0.35s ease-out; }
+@keyframes strike-draw {
+  0%   { background-size: 0% 1.5px; animation-timing-function: cubic-bezier(0.3, 0, 0.6, 1); }
+  67%  { background-size: 58% 1.5px; animation-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1); }
+  100% { background-size: 100% 1.5px; }
+}
+/* 취소선이 끝나기 전까지는 원래 글자색 유지 */
+@keyframes strike-color {
+  from { color: var(--text); }
+  to   { color: var(--muted); }
+}
+@keyframes task-wiggle {
+  0%   { transform: translateX(0) rotate(0); }
+  20%  { transform: translateX(-1.5px) rotate(-0.6deg); }
+  40%  { transform: translateX(1.5px) rotate(0.5deg); }
+  60%  { transform: translateX(-1px) rotate(-0.3deg); }
+  80%  { transform: translateX(0.5px) rotate(0.15deg); }
+  100% { transform: translateX(0) rotate(0); }
+}
+@keyframes check-pop {
+  0%   { transform: scale(0.8); }
+  60%  { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+/* 돌가루: 글 끝(취소선이 끝나는 곳)에서 회색 점들이 튀어나감 */
+.dust { position: relative; display: inline-block; width: 0; height: 0; vertical-align: middle; pointer-events: none; }
+.dust i {
+  position: absolute; left: 0; top: 0; width: 4px; height: 4px; margin: -2px 0 0 -2px;
+  border-radius: 50%; background: var(--muted); opacity: 0;
+  animation: dust-pop 0.5s cubic-bezier(0.1, 0.7, 0.3, 1) 0.42s;
+}
+@keyframes dust-pop {
+  0%   { opacity: 1; transform: translate(0, 0) scale(var(--s)); }
+  70%  { opacity: 0.8; }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.2); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .task.completing .task-text, .task.completing .txt, .task.completing .check { animation: none; }
+  .dust { display: none; }
+}
 .input-wrap { position: relative; flex: 1; min-width: 0; }
 .mirror { min-height: 20px; font-size: 15px; line-height: 20px; letter-spacing: -0.1px; white-space: pre-wrap; word-break: break-word; pointer-events: none; }
 .task-input {
@@ -193,7 +230,7 @@ textarea { font-family: inherit; color: inherit; }
 .time { font-weight: 600; }
 .note-badge { margin-left: 6px; vertical-align: -1px; color: var(--muted); }
 
-.more, .del { flex: none; width: 24px; height: 20px; display: grid; place-items: center; color: var(--muted); opacity: 0; border-radius: var(--radius-s); }
+.more, .del { flex: none; width: 18px; height: 20px; margin-left: -5px; display: grid; place-items: center; color: var(--muted); opacity: 0; border-radius: var(--radius-s); }
 .task:hover .more, .task.editing .more, .task:hover .del, .task.editing .del { opacity: 1; }
 .more:hover, .del:hover { color: var(--text); background: var(--soft); }
 .del:hover { color: #df525f; }
@@ -204,14 +241,10 @@ textarea { font-family: inherit; color: inherit; }
   border-radius: var(--radius-menu); box-shadow: var(--shadow-menu), 0 0 0 1px var(--popover-ring);
   padding: 14px; display: flex; flex-direction: column; gap: 12px; cursor: default;
 }
-.hl-toggle {
-  display: flex; align-items: center; justify-content: space-between; width: 100%;
-  height: 34px; padding: 0 12px; border-radius: 8px; background: var(--popover-inner); font-size: 13px; font-weight: 500;
-}
-.hl-toggle:hover { background: var(--popover-inner-hover); }
-.hl-toggle.on { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--text) 55%, transparent); }
-.hl-sample { background: color-mix(in srgb, var(--hl) 60%, transparent); padding: 1px 4px; border-radius: 2px; color: var(--text); }
-.hl-state { font-size: 12px; color: color-mix(in srgb, var(--text) 50%, transparent); }
+/* 형광펜: 구분 아이콘 줄 끝의 작은 동그란 버튼 (켜지면 노란 배경) */
+.kinds .hl-btn { flex: none; align-self: center; width: 26px; height: 26px; padding: 0; margin: 0 0 0 2px; border-radius: 50%; background: transparent; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--text) 14%, transparent); }
+.kinds .hl-btn:hover { background: transparent; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--text) 26%, transparent); }
+.kinds .hl-btn.sel { background: color-mix(in srgb, #ffe94d 80%, transparent); color: #3a3200; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, #b89b00 45%, transparent); }
 .note-input {
   width: 100%; resize: none; border: none; border-radius: var(--radius-m); background: var(--popover-inner);
   padding: 10px 12px; font-size: 14px; line-height: 20px; outline: none;
@@ -225,7 +258,7 @@ textarea { font-family: inherit; color: inherit; }
 .menu-actions .danger { color: #df525f; }
 
 /* ---------- 구분 아이콘 / 슬래시 메뉴 ---------- */
-.kind-icon { flex: none; width: 16px; height: 20px; margin-top: 1px; display: grid; place-items: center; }
+.kind-icon { flex: none; width: 16px; margin-right: -3px; height: 20px; margin-top: 1px; display: grid; place-items: center; }
 .task-input::placeholder { color: var(--muted); }
 .slash-menu {
   position: absolute; left: 0; top: 40px; z-index: 1001; width: 240px; padding: 6px;
@@ -237,14 +270,24 @@ textarea { font-family: inherit; color: inherit; }
 .slash-icon { display: grid; place-items: center; width: 20px; }
 .slash-label { flex: 1; font-weight: 500; }
 .slash-hint { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.kinds { display: flex; flex-wrap: wrap; gap: 6px; }
+.kinds { display: flex; gap: 6px; }
 .kinds button {
-  flex: 1 1 auto; min-width: 0; height: 30px; padding: 0 10px; display: flex; align-items: center; justify-content: center; gap: 5px;
-  font-size: 12px; font-weight: 500; border-radius: 8px; background: var(--popover-inner); white-space: nowrap;
+  flex: 1 1 0; min-width: 0; height: 56px; padding: 0 2px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  font-size: 11px; font-weight: 500; border-radius: 10px; background: transparent; white-space: nowrap;
 }
 .kinds button svg { flex: none; }
-.kinds button:hover { background: var(--popover-inner-hover); }
-.kinds button.sel { background: var(--popover-inner-hover); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--text) 55%, transparent); }
+/* 아이콘에만 원형 테두리: 평소엔 속이 빈 연한 테두리, 선택되면 안이 연한 회색으로 채워짐 */
+.kinds .kind-dot {
+  display: grid; place-items: center; width: 26px; height: 26px; margin-top: 2px; border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--text) 14%, transparent);
+  transition: background 0.12s ease, box-shadow 0.12s ease;
+}
+.kinds .kind-dot svg { width: 14px; height: 14px; }
+.kinds button:hover .kind-dot { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--text) 26%, transparent); }
+.kinds button.sel .kind-dot {
+  background: var(--popover-inner-hover);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--text) 22%, transparent);
+}
 
 /* ============================================================
    Month
@@ -264,6 +307,7 @@ textarea { font-family: inherit; color: inherit; }
   display: flex; align-items: center; gap: 4px; min-width: 0;
   font-size: 12px; line-height: 18px; letter-spacing: -0.1px;
 }
+.month-task.child { margin-left: 10px; }
 .month-kind { flex: none; display: grid; place-items: center; }
 .month-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .month-task.done .month-label { text-decoration: line-through; color: var(--muted); }
