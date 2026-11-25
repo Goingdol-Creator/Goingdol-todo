@@ -1,9 +1,9 @@
-import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Draggable } from '@hello-pangea/dnd';
 import { Highlighter, MoreHorizontal, StickyNote, Trash2 } from 'lucide-react';
 import { Task, TaskKind, useTasks } from '../context/TaskContext';
-import { KINDS, kindOf, matchKinds, splitByPattern } from '../kinds';
+import { KINDS, kindOf, matchKinds, renderHighlighted } from '../kinds';
 
 /** 형광펜 하이라이트 색 (노랑 하나). task.color === 'yellow' 이면 켜짐 */
 export const HIGHLIGHT_COLOR = '#ffe94d';
@@ -138,18 +138,6 @@ const TaskItem = ({ task, index, listId }: Props) => {
             node
         );
 
-    /** 구분별 자동 강조: 회의는 시간, 출시는 특정 단어를 아이콘과 같은 색으로 */
-    const renderText = (text: string) =>
-        kind?.pattern
-            ? splitByPattern(text, kind.pattern).map((p, i) =>
-                  p.hit ? (
-                      <span key={i} className="time" style={{ color: kind.color }}>{p.text}</span>
-                  ) : (
-                      <Fragment key={i}>{p.text}</Fragment>
-                  )
-              )
-            : text;
-
     const finishEditing = () => {
         if (!task.text.trim()) removeTask(task.id);
         // 다른 줄이 이미 편집 상태로 넘어간 경우(Enter로 새 줄 생성 등)에는 그 상태를 지우지 않음
@@ -277,7 +265,7 @@ const TaskItem = ({ task, index, listId }: Props) => {
 
                     {editing ? (
                         <div className="input-wrap">
-                            <div className="mirror" aria-hidden="true">{highlight(renderText(task.text))}{'\u200b'}</div>
+                            <div className="mirror" aria-hidden="true">{highlight(renderHighlighted(task.text, kind?.color))}{'\u200b'}</div>
                             <textarea
                                 ref={taRef}
                                 className="task-input"
@@ -292,7 +280,7 @@ const TaskItem = ({ task, index, listId }: Props) => {
                     ) : (
                         <div className="task-text" onClick={() => setEditingId(task.id)}>
                             <span className="txt">
-                                {highlight(renderText(task.text))}
+                                {highlight(renderHighlighted(task.text, kind?.color))}
                                 {completing && task.completed && (
                                     <span className="dust" aria-hidden="true">
                                         {DUST.map((d, i) => (

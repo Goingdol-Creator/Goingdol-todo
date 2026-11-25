@@ -1,7 +1,6 @@
-import { Fragment } from 'react';
 import { addDays, endOfMonth, endOfWeek, format, isSameMonth, isToday, startOfMonth, startOfWeek } from 'date-fns';
 import { Task, useTasks } from '../context/TaskContext';
-import { kindOf, splitByPattern } from '../kinds';
+import { kindOf, renderHighlighted } from '../kinds';
 import { HIGHLIGHT_COLOR } from './TaskItem';
 
 interface Props {
@@ -14,15 +13,7 @@ const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일'];
 /** 주간 뷰와 동일: 구분 아이콘 + 글자(자동 강조·형광펜), 배경 칩 없음 */
 const MonthTask = ({ task, child }: { task: Task; child: boolean }) => {
     const kind = kindOf(task.kind);
-    const text = kind?.pattern
-        ? splitByPattern(task.text, kind.pattern).map((p, i) =>
-              p.hit ? (
-                  <span key={i} className="time" style={{ color: kind.color }}>{p.text}</span>
-              ) : (
-                  <Fragment key={i}>{p.text}</Fragment>
-              )
-          )
-        : task.text;
+    const text = renderHighlighted(task.text, kind?.color);
 
     return (
         <span className={`month-task${task.completed ? ' done' : ''}${child ? ' child' : ''}`}>
